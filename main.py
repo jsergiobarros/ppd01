@@ -121,6 +121,10 @@ def preenche(x):
             bot[x]["image"] = piece[adv]
             j = j + 1
             #enviar movimentação
+            jsonsnd = {"comando": "peca", "User": User, "movimento": x}
+            jsonsnd = json.dumps(jsonsnd)
+            conn.send(jsonResult.encode('utf-8'))
+            # enviar movimentação
             vencedor()
             if j == 6:
                 Vazia = tabuleiro.index(0)
@@ -217,6 +221,10 @@ caixa.place(x=400, y=300)
 def getTxt(name):
     chat.configure(state='normal')
     chat.insert(END,f"{User}: {caixa.get()}\n")
+    # enviar mensagem
+    jsonsnd={"comando": "mensagem", "User": User,"texto":caixa.get()}
+    jsonsnd=json.dumps(jsonsnd)
+    conn.send(jsonResult.encode('utf-8'))
     #enviar mensagem
     caixa.delete(0, END)
     chat.see('end')

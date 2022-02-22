@@ -49,7 +49,7 @@ def sendMsg(conn):
         print(jsonResult)
         try:
             jsonResult = json.dumps(jsonResult)
-            conn.send(x.encode())
+            conn.send(jsonResult.encode())
         except:
             connect=False
 
