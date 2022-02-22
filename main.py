@@ -1,13 +1,56 @@
 # This is a sample Python script.
 import tkinter
 from tkinter import *
-from tkinter import ttk,messagebox
+from tkinter import ttk, messagebox
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import socket
+from tkinter.scrolledtext import ScrolledText
 
+User = ''
+Peca=0
+# inicio de janela de usuário
+win = Tk()
+win.resizable(False, False)
+win.title("Tsoro Yematatu")
+def getNome(x):
+    global User,Peca
+    User = entry1.get()
+    Peca=x
+    print(Peca)
+    if len(User) < 1:
+        messagebox.showerror(title="Digite um Nome", message="Nome Inválido")
+    else:
+        win.destroy()
+canvas1 = Canvas(win, width=400, height=300)
+canvas1.pack()
+label1 = Label(win, text='Digite seu nome:')
+label2 = Label(win, text='Escolha suas Peças:')
+entry1 = Entry(win)
+foto1 = PhotoImage(file="bola1.png")
+foto2 = PhotoImage(file="bola2.png")
+button1 = Button(image=foto1,borderwidth=0, command=lambda: getNome(1))
+button2 = Button(image=foto2,borderwidth=0, command=lambda: getNome(2))
+
+canvas1.create_window(200, 100, window=label1)
+canvas1.create_window(200, 140, window=entry1)
+canvas1.create_window(200, 180, window=label2)
+canvas1.create_window(250, 220, window=button2)
+canvas1.create_window(150, 220, window=button1)
+win.mainloop()
+win = Tk()
+canvas1 = Canvas(win, width=400, height=300)
+canvas1.pack()
+label1 = Label(win, text=f'{User}:aguardando adversário:')
+canvas1.create_window(200, 100, window=label1)
+win.resizable(False, False)
+win.title("Tsoro Yematatu")
+win.mainloop()
+# fim de janela de usuário
 janela = Tk()
-janela.resizable(False,False)
+if User=="":
+    janela.destroy()
+janela.resizable(False, False)
 '''
 def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -44,22 +87,22 @@ Vazia = 2
 
 def move(x):
     global Vazia
-    if x ==1 and (Vazia==5 or Vazia== 6):
+    if x == 1 and (Vazia == 5 or Vazia == 6):
         pass
-    elif x ==2 and (Vazia==4 or Vazia== 6):
+    elif x == 2 and (Vazia == 4 or Vazia == 6):
         pass
-    elif x ==3 and (Vazia==5 or Vazia== 4):
+    elif x == 3 and (Vazia == 5 or Vazia == 4):
         pass
-    elif x ==4 and (Vazia==2 or Vazia== 3):
+    elif x == 4 and (Vazia == 2 or Vazia == 3):
         pass
-    elif x ==5 and (Vazia==1 or Vazia== 3):
+    elif x == 5 and (Vazia == 1 or Vazia == 3):
         pass
-    elif x ==6 and (Vazia==1 or Vazia== 2):
+    elif x == 6 and (Vazia == 1 or Vazia == 2):
         pass
     else:
         bot[Vazia]["image"] = piece[tabuleiro[x]]
         bot[x]["image"] = piece[0]
-        tabuleiro[x],tabuleiro[Vazia]=0,tabuleiro[x]
+        tabuleiro[x], tabuleiro[Vazia] = 0, tabuleiro[x]
         Vazia = x
         vencedor()
         print(tabuleiro)
@@ -77,6 +120,7 @@ def preenche(x):
             tabuleiro[x] = adv
             bot[x]["image"] = piece[adv]
             j = j + 1
+            #enviar movimentação
             vencedor()
             if j == 6:
                 Vazia = tabuleiro.index(0)
@@ -134,8 +178,11 @@ canvas.create_line(130, 105, 270, 105, fill="black", width=2)
 canvas.create_line(60, 185, 340, 185, fill="black", width=2)
 canvas.pack(pady=10)
 bot = [0, 0, 0, 0, 0, 0, 0]
+
+
 def popUp():
     messagebox.askquestion(title="inicie o jogo ", message="inicie o jogo primeiro")
+
 
 bot[0] = Button(janela, image=piece[tabuleiro[0]], borderwidth=0, command=lambda: preenche(0))
 
@@ -145,10 +192,12 @@ bot[3] = Button(janela, image=piece[tabuleiro[3]], borderwidth=0, command=lambda
 
 bot[4] = Button(janela, image=piece[tabuleiro[4]], borderwidth=0, command=lambda: preenche(4))
 bot[5] = Button(janela, image=piece[tabuleiro[5]], borderwidth=0, command=lambda: preenche(5))
-bot[6] = Button(janela, image=piece[tabuleiro[6]], borderwidth=0,command=popUp)
+bot[6] = Button(janela, image=piece[tabuleiro[6]], borderwidth=0, command=lambda: preenche(6))
 adv = 1
-bott=Button(janela, image=piece[0], borderwidth=0, command=lbds)
-bott.place(x=60, y=250)
+bott = Button(janela, text='Desistir', command=lbds)
+bott2 = Button(janela, text='Reiniciar', command=lbds)
+bott.place(x=60, y=300)
+bott2.place(x=120, y=300)
 
 bot[0].place(x=200, y=20)
 
@@ -159,14 +208,22 @@ bot[3].place(x=270, y=100)
 bot[4].place(x=60, y=180)
 bot[5].place(x=200, y=180)
 bot[6].place(x=340, y=180)
-chat = Text(janela, width= 35, height=17, state=DISABLED)
+chat = ScrolledText(janela, width=35, height=17,state='disabled')
 chat.place(x=400, y=10)
-caixa = Text(janela, width= 35, height=1)
+chat.see('end')
+caixa = Entry(janela, width=35)
+
 caixa.place(x=400, y=300)
-
-
-inputValue=caixa.get("1.0","end-1c")
+def getTxt(name):
+    chat.configure(state='normal')
+    chat.insert(END,f"{User}: {caixa.get()}\n")
+    #enviar mensagem
+    caixa.delete(0, END)
+    chat.see('end')
+    chat.configure(state='disabled')
+caixa.bind('<Return>',getTxt)
+inputValue = caixa.get()
 print(inputValue)
-chat.insert(END,inputValue)
+chat.insert(END, inputValue)
 
 janela.mainloop()

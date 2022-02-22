@@ -28,24 +28,30 @@ def main():
         print('x')
 
 
-
-
 def recieveMsg(conn):
-    # thread de receber de dados
-    while True:
-        print(conn)
+    # thread de receber de
+    connect=True
+    while connect:
 
-        jsonReceived = conn.recv(1024)
-        if jsonReceived:
-            print("Json received -->", jsonReceived.decode('utf-8'))
+        try:
+            jsonReceived = conn.recv(1024)
+            if jsonReceived:
+                print("Json received -->", jsonReceived.decode('utf-8'))
+        except:
+            print("desconectado")
+            connect=False
 
 def sendMsg(conn):
-    while True:
-
+    connect=True
+    while connect:
         x = input("digita\n")  # thread de envio de dados
         jsonResult = {"first": "You're", "second": x}
         print(jsonResult)
-        jsonResult = json.dumps(jsonResult)
-        conn.send(x.encode())
+        try:
+            jsonResult = json.dumps(jsonResult)
+            conn.send(x.encode())
+        except:
+            connect=False
+
 
 main()
