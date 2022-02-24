@@ -1,4 +1,6 @@
 # This is a sample Python script.
+import json
+import threading
 import tkinter
 from tkinter import *
 from tkinter import ttk, messagebox
@@ -7,21 +9,109 @@ from tkinter import ttk, messagebox
 import socket
 from tkinter.scrolledtext import ScrolledText
 
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connect = 0
+
+
+def chatBox(msg):
+    chat.configure(state='normal')
+    chat.insert(END, f"{msg['User']}: {msg['texto']}\n")
+    chat.see('end')
+    chat.configure(state='disabled')
+
+
+def recieveMsg(conn):
+    # thread de receber de
+    connect = True
+    while connect:
+
+        jsonReceived = conn.recv(1024)
+        jsonReceived = jsonReceived.decode('utf-8')
+        print(jsonReceived)
+        obj = json.loads(jsonReceived)
+        try:
+            if obj['comando'] == "mensagem":
+                chatBox(json.loads(jsonReceived))
+            elif obj['comando'] == "inicio":
+                print("inicio")
+
+                #chatBox(json.loads(jsonReceived))
+        except:
+            print("expt",obj)
+        """try:
+        except:
+            print("desconectado")
+            connect=False"""
+
+
+def send(conn, msg):
+    # thread de envio de dados
+    # jsonResult = {"first": "You're", "second": x}
+    # print(jsonResult)
+    try:
+        msg = json.dumps(msg)
+        conn.send(msg.encode('utf-8'))
+    except:
+        connect = False
+
+
+def conectar():
+    global connect
+    try:  # primeiro que conectar sera servidor
+        client.bind(('localhost', 50000))
+        print("escutando")
+        client.listen(1)
+        connect, addr = client.accept()
+        thread1 = threading.Thread(target=recieveMsg, args=[connect])
+        thread1.start()
+        jsonsnd = {"comando": "inicio", "User": User, "peca": Peca}
+        jsonsnd = json.dumps(jsonsnd)
+        connect.send(jsonsnd.encode('utf-8'))
+
+    except:  # segundo a conectar sera cliente
+        client.connect(('localhost', 50000))
+        connect = client
+        thread1 = threading.Thread(target=recieveMsg, args=[connect])
+        thread1.start()
+        jsonsnd = {"comando": "inicio", "User": User,"peca":Peca}
+        jsonsnd = json.dumps(jsonsnd)
+        connect.send(jsonsnd.encode('utf-8'))
+
+def getTxt(name):
+    chat.configure(state='normal')
+    chat.insert(END, f"{User}: {caixa.get()}\n")
+    # enviar mensagem
+    jsonsnd = {"comando": "mensagem", "User": User, "texto": caixa.get()}
+    jsonsnd = json.dumps(jsonsnd)
+    connect.send(jsonsnd.encode('utf-8'))
+    # enviar mensagem
+    caixa.delete(0, END)
+    chat.see('end')
+    chat.configure(state='disabled')
+
+
 User = ''
-Peca=0
+Peca = 0
 # inicio de janela de usuário
 win = Tk()
 win.resizable(False, False)
 win.title("Tsoro Yematatu")
+
+
 def getNome(x):
-    global User,Peca
+    global User, Peca
     User = entry1.get()
-    Peca=x
+    Peca = x
     print(Peca)
     if len(User) < 1:
         messagebox.showerror(title="Digite um Nome", message="Nome Inválido")
     else:
+        # CODIGO DE CONECTAR E DESTRUIR
         win.destroy()
+        conectar()
+        # send(client, f'{User}')
+
+
 canvas1 = Canvas(win, width=400, height=300)
 canvas1.pack()
 label1 = Label(win, text='Digite seu nome:')
@@ -29,59 +119,22 @@ label2 = Label(win, text='Escolha suas Peças:')
 entry1 = Entry(win)
 foto1 = PhotoImage(file="bola1.png")
 foto2 = PhotoImage(file="bola2.png")
-button1 = Button(image=foto1,borderwidth=0, command=lambda: getNome(1))
-button2 = Button(image=foto2,borderwidth=0, command=lambda: getNome(2))
-
+button1 = Button(image=foto1, borderwidth=0, command=lambda: getNome(1))
+button2 = Button(image=foto2, borderwidth=0, command=lambda: getNome(2))
 canvas1.create_window(200, 100, window=label1)
 canvas1.create_window(200, 140, window=entry1)
 canvas1.create_window(200, 180, window=label2)
 canvas1.create_window(250, 220, window=button2)
 canvas1.create_window(150, 220, window=button1)
 win.mainloop()
-win = Tk()
-canvas1 = Canvas(win, width=400, height=300)
-canvas1.pack()
-label1 = Label(win, text=f'{User}:aguardando adversário:')
-canvas1.create_window(200, 100, window=label1)
-win.resizable(False, False)
-win.title("Tsoro Yematatu")
-win.mainloop()
-# fim de janela de usuário
-janela = Tk()
-if User=="":
-    janela.destroy()
-janela.resizable(False, False)
-'''
-def main():
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    try:#primeiro que conectar sera servidor
-        client.bind(('localhost', 50000))
-        client.listen(1)
-        conn,addr=client.accept()
-        print(conn, addr)
-        
-    except:#segundo a conectar sera cliente
-        client.connect(('localhost', 50000))
-        name = input("nome")
-        client.send()
-        print('x')
-    thread1 = 
-    thread2 =
-    thread1.start()  
-    thread2.start
-def recieveMsg(client):
-     #thread de receber de dados
-    while True:
-        jsonReceived = client.recv(1024)
-        print "Json received -->", jsonReceived
-def sendMsg(client):
-    while True:
-        x=input("digita\n") #thread de envio de dados
-        jsonResult = {"first":"You're", "second":x}
-        jsonResult = json.dumps(jsonResult)
-        client.send(jsonResult) 
-'''
+
+def popUp():
+    messagebox.askquestion(title="inicie o jogo ", message="inicie o jogo primeiro")
+
+
+# fim de janela de usuário
+
 Vazia = 2
 
 
@@ -111,6 +164,7 @@ def move(x):
 tabuleiro = [0, 0, 0, 0, 0, 0, 0]
 adv = 1
 j = 0
+bot = [0, 0, 0, 0, 0, 0, 0]
 
 
 def preenche(x):
@@ -120,10 +174,10 @@ def preenche(x):
             tabuleiro[x] = adv
             bot[x]["image"] = piece[adv]
             j = j + 1
-            #enviar movimentação
+            # enviar movimentação
             jsonsnd = {"comando": "peca", "User": User, "movimento": x}
             jsonsnd = json.dumps(jsonsnd)
-            conn.send(jsonResult.encode('utf-8'))
+            connect.send(jsonsnd.encode('utf-8'))
             # enviar movimentação
             vencedor()
             if j == 6:
@@ -162,17 +216,15 @@ def lbds():
     bot[6]["command"] = lambda: preenche(6)
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print(tabuleiro)
-    vencedor()
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
-
-
+janela = Tk()
+if User == "":
+    janela.destroy()
+janela.resizable(False, False)
+label = Label(janela, text=f"Jogador:{User}")
+label.place(x=120, y=250)
 piece = [PhotoImage(file="bola0.png"), PhotoImage(file="bola1.png"), PhotoImage(file="bola2.png")]
 janela.geometry("700x350")
-janela.title("Tsoro Yematatu")
+janela.title(f"Tsoro Yematatu: jogador: {User}")
 
 canvas = Canvas(janela, width=700, height=350)
 canvas.create_line(210, 20, 370, 200, fill="black", width=2)
@@ -181,12 +233,6 @@ canvas.create_line(217, 20, 217, 200, fill="black", width=2)
 canvas.create_line(130, 105, 270, 105, fill="black", width=2)
 canvas.create_line(60, 185, 340, 185, fill="black", width=2)
 canvas.pack(pady=10)
-bot = [0, 0, 0, 0, 0, 0, 0]
-
-
-def popUp():
-    messagebox.askquestion(title="inicie o jogo ", message="inicie o jogo primeiro")
-
 
 bot[0] = Button(janela, image=piece[tabuleiro[0]], borderwidth=0, command=lambda: preenche(0))
 
@@ -197,11 +243,15 @@ bot[3] = Button(janela, image=piece[tabuleiro[3]], borderwidth=0, command=lambda
 bot[4] = Button(janela, image=piece[tabuleiro[4]], borderwidth=0, command=lambda: preenche(4))
 bot[5] = Button(janela, image=piece[tabuleiro[5]], borderwidth=0, command=lambda: preenche(5))
 bot[6] = Button(janela, image=piece[tabuleiro[6]], borderwidth=0, command=lambda: preenche(6))
-adv = 1
-bott = Button(janela, text='Desistir', command=lbds)
-bott2 = Button(janela, text='Reiniciar', command=lbds)
+
+bott = Button(janela, image=piece[Peca], borderwidth=0, state= DISABLED, command=lbds)
+bott2 = Button(janela, image=piece[adv], borderwidth=0, state= DISABLED ,command=lbds)
+bott3 = Button(janela, text='Desistir', command=lbds)
+bott4 = Button(janela, text='Reiniciar', command=lbds)
 bott.place(x=60, y=300)
 bott2.place(x=120, y=300)
+bott3.place(x=180, y=300)
+bott4.place(x=240, y=300)
 
 bot[0].place(x=200, y=20)
 
@@ -212,26 +262,9 @@ bot[3].place(x=270, y=100)
 bot[4].place(x=60, y=180)
 bot[5].place(x=200, y=180)
 bot[6].place(x=340, y=180)
-chat = ScrolledText(janela, width=35, height=17,state='disabled')
+chat = ScrolledText(janela, width=35, height=17, state='disabled')
 chat.place(x=400, y=10)
-chat.see('end')
 caixa = Entry(janela, width=35)
-
 caixa.place(x=400, y=300)
-def getTxt(name):
-    chat.configure(state='normal')
-    chat.insert(END,f"{User}: {caixa.get()}\n")
-    # enviar mensagem
-    jsonsnd={"comando": "mensagem", "User": User,"texto":caixa.get()}
-    jsonsnd=json.dumps(jsonsnd)
-    conn.send(jsonResult.encode('utf-8'))
-    #enviar mensagem
-    caixa.delete(0, END)
-    chat.see('end')
-    chat.configure(state='disabled')
-caixa.bind('<Return>',getTxt)
-inputValue = caixa.get()
-print(inputValue)
-chat.insert(END, inputValue)
-
+caixa.bind('<Return>', getTxt)
 janela.mainloop()
