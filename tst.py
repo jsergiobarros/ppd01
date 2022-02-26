@@ -59,14 +59,10 @@ def sendMsg(conn):
         except:
             connect=False
 def send(conn,msg):
-
-     # thread de envio de dados
-    #jsonResult = {"first": "You're", "second": x}
-    #print(jsonResult)
     try:
         msg = json.dumps(msg)
         conn.send(msg.encode('utf-8'))
     except:
-        connect=False
+        print("erro")
 
 main()

@@ -2,6 +2,7 @@
 import json
 import threading
 import tkinter
+from random import random, randint
 from tkinter import *
 from tkinter import ttk, messagebox
 # Press Shift+F10 to execute it or replace it with your code.
@@ -11,6 +12,12 @@ from tkinter.scrolledtext import ScrolledText
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connect = 0
+adv = 0
+
+
+def popUp(msg):
+    cor=["azul","vermelho"]
+    messagebox.showinfo(title="definição de peça", message=f"sua peça é: {cor[msg-1]} \ne quem inicia é {cor[adv-1]}")
 
 
 def chatBox(msg):
@@ -22,26 +29,32 @@ def chatBox(msg):
 
 def recieveMsg(conn):
     # thread de receber de
-    connect = True
-    while connect:
-
-        jsonReceived = conn.recv(1024)
+    global Peca, adv
+    con = True
+    while con:
+        jsonReceived = conn.recv(2048)
         jsonReceived = jsonReceived.decode('utf-8')
         print(jsonReceived)
         obj = json.loads(jsonReceived)
-        try:
-            if obj['comando'] == "mensagem":
-                chatBox(json.loads(jsonReceived))
-            elif obj['comando'] == "inicio":
-                print("inicio")
+        if obj['comando'] == "mensagem":
+            chatBox(json.loads(jsonReceived))
+        elif obj['comando'] == "inicio":
+            if obj['peca'] != Peca and obj['adv'] == adv:
+                popUp(Peca)
+            else:
+                if obj['peca'] == Peca:
+                    Peca = randint(1, 2)
+                    obj['peca'] = Peca
+                if obj['adv'] != adv:
+                    adv = randint(1, 2)
+                    obj['adv'] = adv
+                obj = json.dumps(obj)
+                connect.send(obj.encode('utf-8'))
 
-                #chatBox(json.loads(jsonReceived))
-        except:
-            print("expt",obj)
-        """try:
-        except:
-            print("desconectado")
-            connect=False"""
+        elif obj['comando'] == "peca":
+            print(f"movimento { obj['movimento']}")
+            preenche(obj['movimento'],obj['peca'])
+            mudaAdv()
 
 
 def send(conn, msg):
@@ -52,11 +65,12 @@ def send(conn, msg):
         msg = json.dumps(msg)
         conn.send(msg.encode('utf-8'))
     except:
-        connect = False
+        print('erro')
 
 
 def conectar():
-    global connect
+    global connect, adv
+    print(connect)
     try:  # primeiro que conectar sera servidor
         client.bind(('localhost', 50000))
         print("escutando")
@@ -64,7 +78,8 @@ def conectar():
         connect, addr = client.accept()
         thread1 = threading.Thread(target=recieveMsg, args=[connect])
         thread1.start()
-        jsonsnd = {"comando": "inicio", "User": User, "peca": Peca}
+        adv = randint(1, 2)
+        jsonsnd = {"comando": "inicio", "User": User, "peca": Peca, "adv": adv}
         jsonsnd = json.dumps(jsonsnd)
         connect.send(jsonsnd.encode('utf-8'))
 
@@ -73,9 +88,11 @@ def conectar():
         connect = client
         thread1 = threading.Thread(target=recieveMsg, args=[connect])
         thread1.start()
-        jsonsnd = {"comando": "inicio", "User": User,"peca":Peca}
+        adv = randint(1, 2)
+        jsonsnd = {"comando": "inicio", "User": User, "peca": Peca, "adv": adv}
         jsonsnd = json.dumps(jsonsnd)
         connect.send(jsonsnd.encode('utf-8'))
+
 
 def getTxt(name):
     chat.configure(state='normal')
@@ -128,11 +145,6 @@ canvas1.create_window(250, 220, window=button2)
 canvas1.create_window(150, 220, window=button1)
 win.mainloop()
 
-
-def popUp():
-    messagebox.askquestion(title="inicie o jogo ", message="inicie o jogo primeiro")
-
-
 # fim de janela de usuário
 
 Vazia = 2
@@ -162,36 +174,53 @@ def move(x):
 
 
 tabuleiro = [0, 0, 0, 0, 0, 0, 0]
-adv = 1
+
 j = 0
 bot = [0, 0, 0, 0, 0, 0, 0]
 
-
-def preenche(x):
-    global adv, j, Vazia
-    if j < 6:
-        if tabuleiro[x] == 0:
-            tabuleiro[x] = adv
-            bot[x]["image"] = piece[adv]
-            j = j + 1
-            # enviar movimentação
-            jsonsnd = {"comando": "peca", "User": User, "movimento": x}
-            jsonsnd = json.dumps(jsonsnd)
-            connect.send(jsonsnd.encode('utf-8'))
-            # enviar movimentação
-            vencedor()
-            if j == 6:
-                Vazia = tabuleiro.index(0)
-            if adv == 1:
-                adv = 2
-            elif adv == 2:
-                adv = 1
-        else:
-            return 0
+def mudaAdv():
+    global adv
+    print(adv,adv == 1)
+    if adv == 1:
+        adv = 2
     else:
-        move(x)
-        print("x")  # jogo comeca
+        adv=1
 
+
+def preenche(x,Peca):
+    global j, Vazia, adv
+    print("preenche",adv,Peca)
+    if adv == Peca:
+        if j < 6:
+            if tabuleiro[x] == 0:
+                tabuleiro[x] = adv
+                bot[x]["image"] = piece[adv]
+                j = j + 1
+                # enviar movimentação
+                if Peca == adv:
+
+                    jsonsnd = {"comando": "peca", "User": User,"peca":Peca, "movimento": x}
+                    jsonsnd = json.dumps(jsonsnd)
+                    connect.send(jsonsnd.encode('utf-8'))
+                else:
+                    mudaAdv()
+                # enviar movimentação
+                vencedor()
+                if j == 6:
+                    Vazia = tabuleiro.index(0)
+                if adv == 1:
+                    adv = 2
+                elif adv == 2:
+                    adv = 1
+
+            else:
+                return 0
+
+        else:
+            move(x)
+            print("x")  # jogo comeca
+    else:
+        pass
 
 def vencedor():
     if tabuleiro[0] == tabuleiro[1] == tabuleiro[4] and tabuleiro[0] != 0:
@@ -234,18 +263,18 @@ canvas.create_line(130, 105, 270, 105, fill="black", width=2)
 canvas.create_line(60, 185, 340, 185, fill="black", width=2)
 canvas.pack(pady=10)
 
-bot[0] = Button(janela, image=piece[tabuleiro[0]], borderwidth=0, command=lambda: preenche(0))
+bot[0] = Button(janela, image=piece[tabuleiro[0]], borderwidth=0, command=lambda: preenche(0,Peca))
 
-bot[1] = Button(janela, image=piece[tabuleiro[1]], borderwidth=0, command=lambda: preenche(1))
-bot[2] = Button(janela, image=piece[tabuleiro[2]], borderwidth=0, command=lambda: preenche(2))
-bot[3] = Button(janela, image=piece[tabuleiro[3]], borderwidth=0, command=lambda: preenche(3))
+bot[1] = Button(janela, image=piece[tabuleiro[1]], borderwidth=0, command=lambda: preenche(1,Peca))
+bot[2] = Button(janela, image=piece[tabuleiro[2]], borderwidth=0, command=lambda: preenche(2,Peca))
+bot[3] = Button(janela, image=piece[tabuleiro[3]], borderwidth=0, command=lambda: preenche(3,Peca))
 
-bot[4] = Button(janela, image=piece[tabuleiro[4]], borderwidth=0, command=lambda: preenche(4))
-bot[5] = Button(janela, image=piece[tabuleiro[5]], borderwidth=0, command=lambda: preenche(5))
-bot[6] = Button(janela, image=piece[tabuleiro[6]], borderwidth=0, command=lambda: preenche(6))
+bot[4] = Button(janela, image=piece[tabuleiro[4]], borderwidth=0, command=lambda: preenche(4,Peca))
+bot[5] = Button(janela, image=piece[tabuleiro[5]], borderwidth=0, command=lambda: preenche(5,Peca))
+bot[6] = Button(janela, image=piece[tabuleiro[6]], borderwidth=0, command=lambda: preenche(6,Peca))
 
-bott = Button(janela, image=piece[Peca], borderwidth=0, state= DISABLED, command=lbds)
-bott2 = Button(janela, image=piece[adv], borderwidth=0, state= DISABLED ,command=lbds)
+bott = Button(janela, image=piece[Peca], borderwidth=0, state=DISABLED, command=lbds)
+bott2 = Button(janela, image=piece[adv], borderwidth=0, state=DISABLED, command=lbds)
 bott3 = Button(janela, text='Desistir', command=lbds)
 bott4 = Button(janela, text='Reiniciar', command=lbds)
 bott.place(x=60, y=300)
