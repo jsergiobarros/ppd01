@@ -34,11 +34,12 @@ def recieveMsg(conn):
     while con:
         jsonReceived = conn.recv(2048)
         jsonReceived = jsonReceived.decode('utf-8')
-        print(jsonReceived)
+        print(f"comando recebido: {jsonReceived}\n")
         obj = json.loads(jsonReceived)
-        if obj['comando'] == "mensagem":
+        if obj['comando'] == "mensagem": #receber mensagem
             chatBox(json.loads(jsonReceived))
-        elif obj['comando'] == "inicio":
+
+        elif obj['comando'] == "inicio": #comando de inicio, decidir quem começa e peça no caso de igual
             if obj['peca'] != Peca and obj['adv'] == adv:
                 popUp(Peca)
             else:
@@ -51,22 +52,17 @@ def recieveMsg(conn):
                 obj = json.dumps(obj)
                 connect.send(obj.encode('utf-8'))
 
-        elif obj['comando'] == "peca":
+        elif obj['comando'] == "peca": #Movimentação de peças
             print(f"movimento { obj['movimento']}")
+            print(tabuleiro, adv)
             preenche(obj['movimento'],obj['peca'])
+            print(tabuleiro, adv)
+            retorna()
             mudaAdv()
-
-
-def send(conn, msg):
-    # thread de envio de dados
-    # jsonResult = {"first": "You're", "second": x}
-    # print(jsonResult)
-    try:
-        msg = json.dumps(msg)
-        conn.send(msg.encode('utf-8'))
-    except:
-        print('erro')
-
+        elif obj['comando'] == "desistencia":  # recebimento de comando de desistencia
+            pass
+        elif obj['comando'] == "empate":  # recebimento de comando de desistencia
+            pass
 
 def conectar():
     global connect, adv
@@ -144,7 +140,7 @@ canvas1.create_window(200, 180, window=label2)
 canvas1.create_window(250, 220, window=button2)
 canvas1.create_window(150, 220, window=button1)
 win.mainloop()
-
+janela = Tk()
 # fim de janela de usuário
 
 Vazia = 2
@@ -152,75 +148,69 @@ Vazia = 2
 
 def move(x):
     global Vazia
+
     if x == 1 and (Vazia == 5 or Vazia == 6):
-        pass
+        return True
     elif x == 2 and (Vazia == 4 or Vazia == 6):
-        pass
+        return True
     elif x == 3 and (Vazia == 5 or Vazia == 4):
-        pass
+        return True
     elif x == 4 and (Vazia == 2 or Vazia == 3):
-        pass
+        return True
     elif x == 5 and (Vazia == 1 or Vazia == 3):
-        pass
+        return True
     elif x == 6 and (Vazia == 1 or Vazia == 2):
-        pass
+        return True
     else:
         bot[Vazia]["image"] = piece[tabuleiro[x]]
         bot[x]["image"] = piece[0]
         tabuleiro[x], tabuleiro[Vazia] = 0, tabuleiro[x]
         Vazia = x
         vencedor()
-        print(tabuleiro)
+        return False
 
 
 tabuleiro = [0, 0, 0, 0, 0, 0, 0]
-
 j = 0
 bot = [0, 0, 0, 0, 0, 0, 0]
 
 def mudaAdv():
     global adv
-    print(adv,adv == 1)
     if adv == 1:
         adv = 2
     else:
         adv=1
+    bott2['image']=piece[adv]
 
 
-def preenche(x,Peca):
-    global j, Vazia, adv
-    print("preenche",adv,Peca)
-    if adv == Peca:
-        if j < 6:
-            if tabuleiro[x] == 0:
-                tabuleiro[x] = adv
-                bot[x]["image"] = piece[adv]
-                j = j + 1
-                # enviar movimentação
-                if Peca == adv:
-
-                    jsonsnd = {"comando": "peca", "User": User,"peca":Peca, "movimento": x}
-                    jsonsnd = json.dumps(jsonsnd)
-                    connect.send(jsonsnd.encode('utf-8'))
-                else:
-                    mudaAdv()
-                # enviar movimentação
-                vencedor()
-                if j == 6:
-                    Vazia = tabuleiro.index(0)
-                if adv == 1:
-                    adv = 2
-                elif adv == 2:
-                    adv = 1
-
-            else:
-                return 0
-
+def preenche(x,peca):
+    global j, Vazia, adv,Peca
+    if j < 6:
+        if tabuleiro[x] == 0:
+            tabuleiro[x] = peca
+            bot[x]["image"] = piece[peca]
+            j = j + 1
+            if j == 6:
+                Vazia = tabuleiro.index(0)
         else:
-            move(x)
-            print("x")  # jogo comeca
+            return
     else:
-        pass
+        if tabuleiro[x] == adv:
+            aux = move(x)
+            if aux:
+                return
+        else:
+            return
+        print("x")  # jogo comeca
+    if Peca == peca:
+        mudaAdv()
+        jsonsnd = {"comando": "peca", "User": User, "peca": Peca, "movimento": x}
+        jsonsnd = json.dumps(jsonsnd)
+        connect.send(jsonsnd.encode('utf-8'))
+    vencedor()
+    lbds()
+    # enviar movimentação
+
 
 def vencedor():
     if tabuleiro[0] == tabuleiro[1] == tabuleiro[4] and tabuleiro[0] != 0:
@@ -235,23 +225,45 @@ def vencedor():
         print("win")
 
 
+def aguarde():
+    messagebox.showinfo(title="não é sua vez", message="aguarde sua vez jogador")
+
+def desistir():
+    quit= messagebox.askyesno(title="Desistir", message="Deseja mesmo desistir?")
+    print(quit)
+    if quit:
+        jsonsnd = {"comando": "desistir"}
+        jsonsnd = json.dumps(jsonsnd)
+        connect.send(jsonsnd.encode('utf-8'))
+
+def empate():
+    draw= messagebox.askyesno(title="Desistir", message="Deseja mesmo desistir?")
+    print (draw)
+    if draw:
+        jsonsnd = {"comando": "empate"}
+        jsonsnd = json.dumps(jsonsnd)
+        connect.send(jsonsnd.encode('utf-8'))
+
 def lbds():
-    bot[0]["command"] = lambda: preenche(0)
-    bot[1]["command"] = lambda: preenche(1)
-    bot[2]["command"] = lambda: preenche(2)
-    bot[3]["command"] = lambda: preenche(3)
-    bot[4]["command"] = lambda: preenche(4)
-    bot[5]["command"] = lambda: preenche(5)
-    bot[6]["command"] = lambda: preenche(6)
+    bot[0]["command"] = aguarde
+    bot[1]["command"] = aguarde
+    bot[2]["command"] = aguarde
+    bot[3]["command"] = aguarde
+    bot[4]["command"] = aguarde
+    bot[5]["command"] = aguarde
+    bot[6]["command"] = aguarde
+def retorna():
+    bot[0]["command"] = lambda: preenche(0, Peca)
+    bot[1]["command"] = lambda: preenche(1, Peca)
+    bot[2]["command"] = lambda: preenche(2, Peca)
+    bot[3]["command"] = lambda: preenche(3, Peca)
+    bot[4]["command"] = lambda: preenche(4, Peca)
+    bot[5]["command"] = lambda: preenche(5, Peca)
+    bot[6]["command"] = lambda: preenche(6, Peca)
 
-
-janela = Tk()
 if User == "":
     janela.destroy()
 janela.resizable(False, False)
-label = Label(janela, text=f"Jogador:{User}")
-label.place(x=120, y=250)
-piece = [PhotoImage(file="bola0.png"), PhotoImage(file="bola1.png"), PhotoImage(file="bola2.png")]
 janela.geometry("700x350")
 janela.title(f"Tsoro Yematatu: jogador: {User}")
 
@@ -262,23 +274,26 @@ canvas.create_line(217, 20, 217, 200, fill="black", width=2)
 canvas.create_line(130, 105, 270, 105, fill="black", width=2)
 canvas.create_line(60, 185, 340, 185, fill="black", width=2)
 canvas.pack(pady=10)
+piece = [PhotoImage(file="bola0.png"), PhotoImage(file="bola1.png"), PhotoImage(file="bola2.png")]
 
-bot[0] = Button(janela, image=piece[tabuleiro[0]], borderwidth=0, command=lambda: preenche(0,Peca))
+for i in range(7):
+    bot[i] = Button(janela, image=piece[0], borderwidth=0)
 
-bot[1] = Button(janela, image=piece[tabuleiro[1]], borderwidth=0, command=lambda: preenche(1,Peca))
-bot[2] = Button(janela, image=piece[tabuleiro[2]], borderwidth=0, command=lambda: preenche(2,Peca))
-bot[3] = Button(janela, image=piece[tabuleiro[3]], borderwidth=0, command=lambda: preenche(3,Peca))
+if Peca == adv:
+    retorna()
+else:
+    lbds()
 
-bot[4] = Button(janela, image=piece[tabuleiro[4]], borderwidth=0, command=lambda: preenche(4,Peca))
-bot[5] = Button(janela, image=piece[tabuleiro[5]], borderwidth=0, command=lambda: preenche(5,Peca))
-bot[6] = Button(janela, image=piece[tabuleiro[6]], borderwidth=0, command=lambda: preenche(6,Peca))
-
-bott = Button(janela, image=piece[Peca], borderwidth=0, state=DISABLED, command=lbds)
-bott2 = Button(janela, image=piece[adv], borderwidth=0, state=DISABLED, command=lbds)
-bott3 = Button(janela, text='Desistir', command=lbds)
-bott4 = Button(janela, text='Reiniciar', command=lbds)
+bott = Button(janela, image=piece[Peca], borderwidth=0, state=DISABLED)
+labelb1 = Label(janela, text='Sua peça:')
+bott2 = Button(janela, image=piece[adv], borderwidth=0, state=DISABLED)
+labelb2 = Label(janela, text='Peça da vez:')
+bott3 = Button(janela, text='Desistir', command=desistir)
+bott4 = Button(janela, text='Empate', command=empate)
 bott.place(x=60, y=300)
+labelb1.place(x=50, y=270)
 bott2.place(x=120, y=300)
+labelb2.place(x=110, y=270)
 bott3.place(x=180, y=300)
 bott4.place(x=240, y=300)
 
