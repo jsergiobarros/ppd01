@@ -7,17 +7,17 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connect = 0
-adv = 0
-PLACAR = [0, 0, 0]
-draw = False
-User = ''
-Peca = 0
-Vazia = 2
-tabuleiro = [0, 0, 0, 0, 0, 0, 0]
-j = 0
-bot = [0, 0, 0, 0, 0, 0, 0]
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #criação do socket client, será usado tanto em caso de servidor ou cliente
+connect = 0 # variavel que receberá o socket
+adv = 0 #variavel de controle de rodada
+PLACAR = [0, 0, 0] #variavel para mostrar o placar para os usuários
+draw = False #variavel de controle de empate
+User = ''# variavel de nome de usuário
+Peca = 0 #qual a peça do usuário
+Vazia = 2 #variavel de controle de casa vazia
+tabuleiro = [0, 0, 0, 0, 0, 0, 0] #estado do tabuleiro
+j = 0 #variavel controle
+bot = [0, 0, 0, 0, 0, 0, 0] #array que receberá os botões
 
 
 def popUp(msg):
@@ -26,20 +26,31 @@ def popUp(msg):
                         message=f"sua peça é: {cor[msg - 1]} \ne quem inicia é {cor[adv - 1]}")
 
 
-def chatBox(msg):
+def chatBox(msg):#função de inserir mensagem na caixa de texto
     chat.configure(state='normal')
-    chat.insert(END, f"{msg['User']}: {msg['texto']}\n")
+    chat.tag_config('Vermelho', foreground="red")
+    chat.tag_config('Azul', foreground="blue")
+    chat.insert(END, f"{msg['User']}: {msg['texto']}\n",msg['cor'])
+
     chat.see('end')
     chat.configure(state='disabled')
 
 
-def recieveMsg(conn):
+def recieveMsg(conn): #thread principal e unica de comunicação
+    """comunicação é feita recebendo um json em forma de string, e fazer o tratamento de comandos
+    mensagem troca de mensagem
+    inicio, define por sorteio as peças (em caso dos jogadores selecionarem a mesma)
+    movimento, que recebe o movimento realizado pelo outro jogador
+    empate sujere o empate para o outro jogador
+    desiste, jogador A desiste e concede vitória ao jogador B, pode ser realizada em qualquer momento do jogo e esse reiniciará"""
     # thread de receber de
     global Peca, adv, draw
-    con = True
-    while con:
+    while True:
         jsonReceived = conn.recv(2048)
         jsonReceived = jsonReceived.decode('utf-8')
+        if jsonReceived ==  "encerrar":
+            connect.close()
+            janela.destroy()
         obj = json.loads(jsonReceived)
         if obj['comando'] == "mensagem":  # receber mensagem
             chatBox(json.loads(jsonReceived))
@@ -60,12 +71,14 @@ def recieveMsg(conn):
             preenche(obj['movimento'], obj['peca'])
             retorna()
             mudaAdv()
-        elif obj['comando'] == "desiste":  # recebimento de comando de desistencia
+
+        elif obj['comando'] == "desiste":  # recebimento de comando de desistencia e considera o vencedor
             start()
             PLACAR[0] += 1
             atualizaPlacar()
             messagebox.showinfo(title="Venceu", message="O jogador desistiu, Você venceu!")
-        elif obj['comando'] == "empate":  # recebimento de comando de desistencia
+
+        elif obj['comando'] == "empate":  # recebimento de comando de de empate,
             if obj['confirma']:
                 if draw:
                     start()
@@ -78,9 +91,6 @@ def recieveMsg(conn):
                         PLACAR[1] += 1
                         atualizaPlacar()
                         draw = False
-
-            else:
-                pass
 
 
 def conectar():
@@ -96,7 +106,6 @@ def conectar():
         jsonsnd = {"comando": "inicio", "User": User, "peca": Peca, "adv": adv}
         jsonsnd = json.dumps(jsonsnd)
         connect.send(jsonsnd.encode('utf-8'))
-
     except:  # segundo a conectar sera cliente
         client.connect(('localhost', 50000))
         connect = client
@@ -110,9 +119,11 @@ def conectar():
 
 def getTxt(name):  # pegar mensagem e enviar da caixa de texto
     chat.configure(state='normal')
-    chat.insert(END, f"{User}: {caixa.get()}\n")
+    chat.tag_config('Vermelho', foreground="red")
+    chat.tag_config('Azul', foreground="blue")
+    chat.insert(END, f"{User}: {caixa.get()}\n",'Vermelho' if Peca==2 else 'Azul')
     # enviar mensagem
-    jsonsnd = {"comando": "mensagem", "User": User, "texto": caixa.get()}
+    jsonsnd = {"comando": "mensagem", "User": User, "texto": caixa.get(), "cor":'Vermelho' if Peca==2 else 'Azul'}
     jsonsnd = json.dumps(jsonsnd)
     connect.send(jsonsnd.encode('utf-8'))
     # enviar mensagem
@@ -121,11 +132,12 @@ def getTxt(name):  # pegar mensagem e enviar da caixa de texto
     chat.configure(state='disabled')
 
 
+
 # inicio de janela de usuário
-win = Tk()
+win = Tk() #tela inicial, de selecionar peça e definir nome de usuário
 
 
-def getNome(x):
+def getNome(x): #função de pegar o nome e definir o jogador. se for vazio nao entra
     global User, Peca
     User = entry1.get()
     Peca = x
@@ -134,6 +146,9 @@ def getNome(x):
     else:
         win.destroy()
         conectar()
+        while connect == 0:
+            pass
+
 
 win.resizable(False, False)
 win.title("Tsoro Yematatu")
@@ -153,11 +168,11 @@ canvas1.create_window(250, 220, window=button2)
 canvas1.create_window(150, 220, window=button1)
 win.mainloop()  # fim de janela de usuário
 
-janela = Tk()
+janela = Tk()#inicio de janela principal
 
-def move(x):
+def move(x): #função de movimentação
     global Vazia
-    if x == 1 and (Vazia == 5 or Vazia == 6):
+    if x == 1 and (Vazia == 5 or Vazia == 6): #peças escolhidas não podem ir para o vazio
         return True
     elif x == 2 and (Vazia == 4 or Vazia == 6):
         return True
@@ -169,7 +184,7 @@ def move(x):
         return True
     elif x == 6 and (Vazia == 1 or Vazia == 2):
         return True
-    else:
+    else: #movimentação é possivel
         bot[Vazia]["image"] = piece[tabuleiro[x]]
         bot[x]["image"] = piece[0]
         tabuleiro[x], tabuleiro[Vazia] = 0, tabuleiro[x]
@@ -178,7 +193,7 @@ def move(x):
         return False
 
 
-def mudaAdv():
+def mudaAdv(): #mudança da vez, e atualização da indicação visual
     global adv
     if adv == 1:
         adv = 2
@@ -187,7 +202,7 @@ def mudaAdv():
     bott2['image'] = piece[adv]
 
 
-def preenche(x, peca):
+def preenche(x, peca): #função de preenchimento e movimentação
     global j, Vazia, adv, Peca
     if j < 6:
         if tabuleiro[x] == 0:
@@ -198,14 +213,13 @@ def preenche(x, peca):
                 Vazia = tabuleiro.index(0)
         else:
             return
-    else:
+    else: # jogo comeca
         if tabuleiro[x] == adv:
             aux = move(x)
             if aux:
                 return
         else:
             return
-    # jogo comeca
     if Peca == peca:
         mudaAdv()
         jsonsnd = {"comando": "peca", "User": User, "peca": Peca, "movimento": x}
@@ -221,7 +235,7 @@ def atualizaPlacar():
     placar.place(x=140, y=270)
 
 
-def vencedor():
+def vencedor(): #conferir se houve um vencedor
     aux = 0
     if tabuleiro[0] == tabuleiro[1] == tabuleiro[4] and tabuleiro[0] != 0:
         aux = tabuleiro[0]
@@ -244,11 +258,11 @@ def vencedor():
     start()
 
 
-def aguarde():
+def aguarde():#mensagem de bloqueio de movimento na vez errada
     messagebox.showinfo(title="não é sua vez", message="aguarde sua vez jogador")
 
 
-def desistir():
+def desistir():#codigo de desistir e conceder a vitória
     quit = messagebox.askyesno(title="Desistir", message="Deseja mesmo desistir?")
     if quit:
         jsonsnd = {"comando": "desistir"}
@@ -256,9 +270,9 @@ def desistir():
         connect.send(jsonsnd.encode('utf-8'))
 
 
-def empate():
+def empate():#codigo de empate
     global draw
-    draw = messagebox.askyesno(title="Desistir", message="Deseja mesmo desistir?")
+    draw = messagebox.askyesno(title="Empatar", message="Deseja empatar?")
     if draw:
         jsonsnd = {"comando": "empate", "confirma": draw}
         jsonsnd = json.dumps(jsonsnd)
@@ -266,7 +280,7 @@ def empate():
     return draw
 
 
-def lbds():
+def lbds(): #função de vez adversário
     bot[0]["command"] = aguarde
     bot[1]["command"] = aguarde
     bot[2]["command"] = aguarde
@@ -276,7 +290,7 @@ def lbds():
     bot[6]["command"] = aguarde
 
 
-def retorna():
+def retorna(): #função de vez jogador
     bot[0]["command"] = lambda: preenche(0, Peca)
     bot[1]["command"] = lambda: preenche(1, Peca)
     bot[2]["command"] = lambda: preenche(2, Peca)
@@ -286,11 +300,12 @@ def retorna():
     bot[6]["command"] = lambda: preenche(6, Peca)
 
 
-piece = []
+piece = []#aray que recebe as figuras
 if User == "":
     janela.destroy()
 else:
     piece = [PhotoImage(file="bola0.png"), PhotoImage(file="bola1.png"), PhotoImage(file="bola2.png")]
+#configuraçao de janela
 janela.resizable(False, False)
 janela.geometry("700x350")
 janela.title(f"Tsoro Yematatu: jogador: {User}")
@@ -304,7 +319,7 @@ canvas.create_line(60, 185, 340, 185, fill="black", width=2)
 canvas.pack(pady=10)
 
 
-def desiste():
+def desiste():#função de enviar desistencia
     jsonsnd = {"comando": "desiste"}
     jsonsnd = json.dumps(jsonsnd)
     connect.send(jsonsnd.encode('utf-8'))
@@ -312,7 +327,7 @@ def desiste():
     PLACAR[2] += 1
     atualizaPlacar()
 
-
+#função de reinicio
 def start():
     global tabuleiro, j
     tabuleiro = [0, 0, 0, 0, 0, 0, 0]
@@ -328,7 +343,7 @@ if Peca == adv:
     retorna()
 else:
     lbds()
-
+#botões de controle e de jogo
 bott = Button(janela, image=piece[Peca], borderwidth=0, state=DISABLED)
 labelb1 = Label(janela, text='Sua peça:')
 bott2 = Button(janela, image=piece[adv], borderwidth=0, state=DISABLED)
@@ -357,4 +372,10 @@ chat.place(x=400, y=10)
 caixa = Entry(janela, width=35)
 caixa.place(x=400, y=300)
 caixa.bind('<Return>', getTxt)
+#fechar janela fecha a o socket e encerra a janela do adversário
+def desliga():
+    connect.send("encerrar".encode('utf-8'))
+    connect.close()
+    janela.destroy()
+janela.protocol("WM_DELETE_WINDOW", desliga)
 janela.mainloop()
