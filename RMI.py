@@ -7,6 +7,9 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
+import Pyro4
+
+
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #criação do socket client, será usado tanto em caso de servidor ou cliente
 connect = 0 # variavel que receberá o socket
 adv = 0 #variavel de controle de rodada
@@ -134,6 +137,7 @@ def getTxt(name):  # pegar mensagem e enviar da caixa de texto
 
 
 # inicio de janela de usuário
+
 win = Tk() #tela inicial, de selecionar peça e definir nome de usuário
 
 
@@ -157,6 +161,7 @@ canvas1.pack()
 label1 = Label(win, text='Digite seu nome:')
 label2 = Label(win, text='Escolha suas Peças:')
 entry1 = Entry(win)
+
 foto1 = PhotoImage(file="bola1.png")
 foto2 = PhotoImage(file="bola2.png")
 button1 = Button(image=foto1, borderwidth=0, command=lambda: getNome(1))
@@ -379,3 +384,5 @@ def desliga():
     janela.destroy()
 janela.protocol("WM_DELETE_WINDOW", desliga)
 janela.mainloop()
+
+
