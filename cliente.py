@@ -39,3 +39,29 @@ print(str(ns.list()))
 jogar()
 daemon.requestLoop()
 
+
+def preenche(x, peca): #função de preenchimento e movimentação
+    global j, Vazia, adv, Peca
+    if j < 6:
+        if tabuleiro[x] == 0:
+            tabuleiro[x] = peca
+            bot[x]["image"] = piece[peca]
+            j = j + 1
+            if j == 6:
+                Vazia = tabuleiro.index(0)
+        else:
+            return
+    else: # jogo comeca
+        if tabuleiro[x] == adv:
+            aux = move(x)
+            if aux:
+                return
+        else:
+            return
+    if Peca == peca:
+        mudaAdv()
+        jsonsnd = {"comando": "peca", "User": User, "peca": Peca, "movimento": x}
+        jsonsnd = json.dumps(jsonsnd)
+        connect.send(jsonsnd.encode('utf-8'))
+    vencedor()
+    lbds()
