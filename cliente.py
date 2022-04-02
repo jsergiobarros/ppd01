@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import socket
@@ -7,9 +8,30 @@ import Pyro4
 @Pyro4.expose
 def jogar(Thread):
     print("jogou")
-ns = Pyro4.locateNS(host='192.168.0.19',port=50000)
+print(socket.gethostbyname(socket.gethostname()))
+#ns = Pyro4.locateNS(host='192.168.56.1',port=50000)
+def callback():
+    return False
+async def obj():
+    myip=socket.gethostbyname(socket.gethostname())
+    ns = Pyro4.locateNS(host="192.168.0.8",port=50000)
+    daemon = Pyro4.Daemon(host=myip)
+    uri = daemon.register(jogar)
+    ns.register("Usear",uri)
+    daemon.requestLoop()
+
+
+#task = asyncio.create_task( obj())
+async def main():
+    task = asyncio.create_task(obj())
+    print("ns")
+asyncio.run(main())
+print("ns")
 ip=socket.gethostbyname(socket.gethostname())
 daemon = Pyro4.Daemon(host=ip)
+
+
+
 
 uri = daemon.register(jogar)
 ns.register("usaesas",uri)
@@ -37,31 +59,6 @@ print(aux)
 win.mainloop()
 print(str(ns.list()))
 jogar()
-daemon.requestLoop()
+#daemon.requestLoop()
 
 
-def preenche(x, peca): #função de preenchimento e movimentação
-    global j, Vazia, adv, Peca
-    if j < 6:
-        if tabuleiro[x] == 0:
-            tabuleiro[x] = peca
-            bot[x]["image"] = piece[peca]
-            j = j + 1
-            if j == 6:
-                Vazia = tabuleiro.index(0)
-        else:
-            return
-    else: # jogo comeca
-        if tabuleiro[x] == adv:
-            aux = move(x)
-            if aux:
-                return
-        else:
-            return
-    if Peca == peca:
-        mudaAdv()
-        jsonsnd = {"comando": "peca", "User": User, "peca": Peca, "movimento": x}
-        jsonsnd = json.dumps(jsonsnd)
-        connect.send(jsonsnd.encode('utf-8'))
-    vencedor()
-    lbds()

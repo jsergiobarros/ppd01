@@ -1,3 +1,4 @@
+import asyncio
 import threading
 import time
 from random import randint
@@ -10,8 +11,8 @@ import Pyro4
 
 adv=0
 User=0
-Adversario=0
 Peca =0
+Adversario=0
 ip=socket.gethostbyname(socket.gethostname())
 ns=0
 PLACAR=[0,0,0]
@@ -20,6 +21,7 @@ bot = [0, 0, 0, 0, 0, 0, 0] #array que receberá os botões
 tabuleiro = [0, 0, 0, 0, 0, 0, 0, 0]
 Vazia=0
 j=0
+daemon=0
 @Pyro4.expose
 class jogo:
     @Pyro4.expose
@@ -33,7 +35,7 @@ class jogo:
 
     @Pyro4.expose
     def define(self, nome, peca):
-        global win,Peca,adv
+        global win,Peca,adv,ns
         adversario(nome)
         if Peca == peca:
             Peca = randint(1, 2)
@@ -43,11 +45,17 @@ class jogo:
                 Adversario.definePeca(1)
         adv = randint(1, 2)
         Adversario.defineAdv(adv)
+        ns.remove(User)
         time.sleep(0.5)
         canvas2.destroy()
         ajustaTela()
         popUp()
 
+    @Pyro4.expose
+    def close(self):
+        messagebox.showinfo(title="Adversário desconectou", message="Adversário desconectou:\nO jogo será encerrado")
+        daemon.close()
+        win.destroy()
 
 
     @Pyro4.expose
@@ -60,15 +68,23 @@ class jogo:
         global adv
         adv=numero
 
+
     @Pyro4.expose
-    def prt(self):
-        print("conectou")
+    def draw(self):
+        resposta = messagebox.askyesno(title="Jogador solicitou empate",message="Jogador solicitou o empate, deseja conceder?")
+        if resposta:
+            PLACAR[1] += 1
+            atualizaPlacar()
+            start()
+            return resposta
 
 
-
-
-
-
+    @Pyro4.expose
+    def forfeit(self):
+        messagebox.showinfo(title="Jogador solicitou empate", message="Jogador desistiu da partida, você venceu")
+        PLACAR[0] += 1
+        atualizaPlacar()
+        start()
 
     @Pyro4.expose
     def preenche(self,x): #função de preenchimento e movimentação
@@ -77,6 +93,7 @@ class jogo:
             if tabuleiro[x] == 0:
                 tabuleiro[x] = adv
                 bot[x]["image"] = piece[adv]
+                vencedor()
                 j = j + 1
                 if j == 6:
                     Vazia = tabuleiro.index(0)
@@ -90,12 +107,10 @@ class jogo:
             else:
                 return
         mudaAdv()
-        if adv==Peca:
+        if adv == Peca:
             retorna()
         else:
             lbds()
-
-
 
 
 def move(x): #função de movimentação
@@ -119,6 +134,7 @@ def move(x): #função de movimentação
         Vazia = x
         vencedor()
         return False
+
 def mudaAdv(): #mudança da vez, e atualização da indicação visual
     global adv
     if adv == 1:
@@ -148,7 +164,6 @@ def vencedor(): #conferir se houve um vencedor
         PLACAR[2] += 1
     atualizaPlacar()
     start()
-
 
 def start():
     global tabuleiro, j
@@ -183,14 +198,16 @@ def popUp():
     messagebox.showinfo(title="definição de peça",
                         message=f"sua peça é: {cor[Peca - 1]} \ne quem inicia é {cor[adv - 1]}")
 
-def obj():
-    global ip, ns
-    ip=socket.gethostbyname(socket.gethostname())
+
+def daemonInit():
+    global ip, ns, daemon
+    myip=socket.gethostbyname(socket.gethostname())
     ns = Pyro4.locateNS(host=ip,port=port)
-    daemon = Pyro4.Daemon(host=ip)
+    daemon = Pyro4.Daemon(host=myip)
     uri = daemon.register(jogo)
     ns.register(User,uri)
     daemon.requestLoop()
+
 
 def getIp():
     global ip, port, server,User
@@ -208,7 +225,7 @@ def getIp():
             messagebox.showerror(title="Digite um Nome", message="Nome já Cadastrado")
             return
         except:
-            export = threading.Thread(target=obj)
+            export = threading.Thread(target=daemonInit)
             export.start()
             canvas0.destroy()
             canvas1.pack()
@@ -243,7 +260,6 @@ boxName.grid(pady=0,row=5)
 button.grid(pady=10, row=6)
 canvas0.pack()
 
-
 canvas1 = Canvas(win, width=400, height=300)
 label1 = Label(win, text='Digite o outro:')
 label2 = Label(win, text='Escolha suas Peças:')
@@ -251,8 +267,8 @@ entry1 = Entry(win)
 foto1 = PhotoImage(file="bola1.png")
 foto2 = PhotoImage(file="bola2.png")
 foto0 = PhotoImage(file="bola0.png")
-button1 = Button(image=foto1, borderwidth=0, command= lambda:getNome(1))
-button2 = Button(image=foto2, borderwidth=0, command=lambda: getNome(2))
+button1 = Button(image=foto1, borderwidth=0, command = lambda: getNome(1))
+button2 = Button(image=foto2, borderwidth=0, command = lambda: getNome(2))
 canvas1.create_window(200, 180, window=label2)
 canvas1.create_window(250, 220, window=button2)
 canvas1.create_window(150, 220, window=button1)
@@ -274,10 +290,24 @@ def ajustaTela():
 
 
 def desiste():
-    print(Adversario)
-    pass
+    resposta = messagebox.askyesno(title="Conceder vitória?",message="Deseja conceder a vitória?")
+    if resposta:
+        PLACAR[2] += 1
+        atualizaPlacar()
+        start()
+        Adversario.forfeit()
+
+
 def empate():
-    pass
+    resposta = messagebox.askyesno(title="Conceder empate?",message="Deseja sujerir empate?")
+    if resposta:
+        aux = Adversario.draw()
+        if aux:
+            PLACAR[1] += 1
+            atualizaPlacar()
+            start()
+
+
 
 def lbds(): #função de vez adversário
     bot[0]["command"] = aguarde
@@ -318,8 +348,6 @@ if User == "":
 else:
     piece = [foto0, foto1, foto2]
 
-win.resizable(False, False)
-
 
 canvas = Canvas(win, width=700, height=350)
 canvas.create_line(210, 20, 370, 200, fill="black", width=2)
@@ -359,10 +387,17 @@ caixa = Entry(canvas, width=35)
 caixa.place(x=400, y=300)
 caixa.bind('<Return>', getTxt)
 #fechar janela fecha a o socket e encerra a janela do adversário
-"""def desliga():
-    export.join()
+
+def desliga():
     win.destroy()
-win.protocol("WM_DELETE_WINDOW", desliga)"""
+    try:
+        Adversario.close()
+    except:
+        print()
+    daemon.close()
+    ns.remove(name= User)
+    win.destroy()
+win.protocol("WM_DELETE_WINDOW", desliga)
 
 
 win.mainloop()  # fim de janela de usuário
